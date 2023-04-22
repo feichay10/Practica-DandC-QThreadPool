@@ -1,13 +1,15 @@
 #include <QCoreApplication>
 #include <QVector>
 #include <iostream>
-#include <QtConcurrent/QtConcurrent>
-#include <QRunnable>
-#include <QDebug>
-#include <QElapsedTimer>
 #include <fstream>
 #include <getopt.h>
 #include <math.h>
+#include <QThread> ///< Function QThread::idealThreadCount()
+#include <QThreadPool>
+#include <QRunnable>
+#include <QElapsedTimer>
+#include <atomic>
+#include <mutex>
 
 // https://stackoverflow.com/questions/7988486/how-do-you-calculate-the-variance-median-and-standard-deviation-in-c-or-java/7988556#7988556
 
@@ -18,9 +20,10 @@
 const char* PROG_NAME = "DC_THREADPOOL";
 const char* MANUAL_PATH = "manual.hlp";
 
-
-QVector<float> d(60 * 60 * 24); ///< Here we save all the measurements of a single day
+const int kSecondsInADay{86400};
 unsigned int total = 60 * 60 * 24 * 365; ///< sec * min * hour * days
+std::atomic<int> days_processed{0}; ///< Used in ThreadPoolMode
+std::mutex mtx_screen; ///< We control the access to screen with this mutex in ThreadPoolMode
 
 QElapsedTimer timer; ///< It will be our timer to count the time in each iteration of each method to solve the problem
 qint64 time_serial = Q_INT64_C(0); ///< We set to zero
@@ -68,8 +71,9 @@ class Statistics {
 /// this functions allows us to compare the performance against using threads in the other two methods
 void SerialMode(void) {
   std::cout << "Serial mode start:" << std::endl;
+  std::cout << "------------------------------------------------------------------------------" << std::endl;
   time_serial = timer.nsecsElapsed(); ///< We run the chronometer
-  const int kSecondsInADay{24 * 3600};
+  QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
   for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
     d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
     if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
@@ -85,20 +89,50 @@ void SerialMode(void) {
 
 
 
+class ThreadPoolTask : public QRunnable {
+ public:
+  void run() override {
+    int actual_day{++days_processed};
+    QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
+    for(int i{1}; i <= kSecondsInADay; ++i) {
+      d[(i - 1) % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
+      if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
+          Statistics s(d);
+          double mean{s.getMean()};
+          double median{s.median()};
+          mtx_screen.lock(); ///< We took the mutex to have one thread writing in the screen at the same time
+          std::cout << actual_day << " of 365 - Average: " << mean << " - Median: " << median << std::endl;
+          mtx_screen.unlock();
+      }
+    }
+  }
+};
 
 
 
-
-void ThreadPoolMode(const unsigned int num_threads) {
+void ThreadPoolMode(unsigned int num_threads) {
   std::cout << "Thread pool mode start:" << std::endl;
+  std::cout << "------------------------------------------------------------------------------" << std::endl;
   time_thread_pool = timer.nsecsElapsed(); ///< We run the chronometer
 
+  /// if num_threads is greater than the threads available in the system
+  /// num_threads will be equal to the value of the free threads in the system
+  if (num_threads > unsigned(QThread::idealThreadCount())) num_threads = QThread::idealThreadCount();
 
+  QThreadPool thread_pool;
+  thread_pool.setMaxThreadCount(num_threads);
 
-  // days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
+  for(int i{0}; i < 365; ++i) {
+    ThreadPoolTask* task = new ThreadPoolTask();
+    thread_pool.start(task);
+  }
+  thread_pool.waitForDone(); ///< Wait for all tasks to finish before exiting
+  days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
+
   time_thread_pool = timer.nsecsElapsed() - time_thread_pool; ///< We stop the chronometer
   std::cout << "------------------------------------------------------------------------------" << std::endl;
-  std::cout << "Done in Producer and Consumer mode" << std::endl << std::endl;
+  std::cout << "Done in Producer and Consumer mode" << std::endl;
+  std::cout << "Number of threads used: " << num_threads << std::endl << std::endl;
 }
 
 
@@ -110,6 +144,7 @@ void ThreadPoolMode(const unsigned int num_threads) {
 
 void DivideAndConquerorMode(const unsigned int num_sub_divisions) {
   std::cout << "Divide and conqueror mode start:" << std::endl;
+  std::cout << "------------------------------------------------------------------------------" << std::endl;
   time_divide_and_conqueror = timer.nsecsElapsed(); ///< We run the chronometer
 
 
@@ -117,7 +152,8 @@ void DivideAndConquerorMode(const unsigned int num_sub_divisions) {
   // days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
   time_divide_and_conqueror = timer.nsecsElapsed() - time_divide_and_conqueror; ///< We stop the chronometer
   std::cout << "------------------------------------------------------------------------------" << std::endl;
-  std::cout << "Done in Producer and Consumer mode" << std::endl << std::endl;
+  std::cout << "Done in Producer and Consumer mode" << std::endl;
+  std::cout << "Number of threads used: " << std::endl << std::endl;
 }
 
 
@@ -191,7 +227,9 @@ int main(int argc, char* argv[]) {
           break;
 
         default:
-          SerialMode(); ///< We execute the selected mode going to the concret function
+          ThreadPoolMode(value);
+          //DivideAndConquerorMode(value);
+          //SerialMode(); ///< We execute the selected mode going to the concret function
           acc_num_measurements[0].first += double(time_serial) / 1000000000; ///< We get the all measurements in a variable in seconds
           ++acc_num_measurements[0].second; ///< We store the times to this mode has been used
           break;
