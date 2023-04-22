@@ -23,7 +23,8 @@ const char* MANUAL_PATH = "manual.hlp";
 const int kSecondsInADay{86400};
 unsigned int total = 60 * 60 * 24 * 365; ///< sec * min * hour * days
 std::atomic<int> days_processed{0}; ///< Used in ThreadPoolMode
-std::mutex mtx_screen; ///< We control the access to screen with this mutex in ThreadPoolMode
+std::mutex mutex_vector_data;
+QVector<std::pair<double, double>> MeanAndMedianDaysInAYear(365);
 
 QElapsedTimer timer; ///< It will be our timer to count the time in each iteration of each method to solve the problem
 qint64 time_serial = Q_INT64_C(0); ///< We set to zero
@@ -92,47 +93,49 @@ void SerialMode(void) {
 class ThreadPoolTask : public QRunnable {
  public:
   void run() override {
-    int actual_day{++days_processed};
+    int actual_day{days_processed++}; ///< We use the post-increment to do it in a single line
     QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
-    for(int i{1}; i <= kSecondsInADay; ++i) {
-      d[(i - 1) % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
-      if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
-          Statistics s(d);
-          double mean{s.getMean()};
-          double median{s.median()};
-          mtx_screen.lock(); ///< We took the mutex to have one thread writing in the screen at the same time
-          std::cout << actual_day << " of 365 - Average: " << mean << " - Median: " << median << std::endl;
-          mtx_screen.unlock();
-      }
+    for(int i{0}; i < kSecondsInADay; ++i) {
+      d[i % kSecondsInADay] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
     }
+    Statistics s(d);
+    MeanAndMedianDaysInAYear[actual_day].first = s.getMean();
+    MeanAndMedianDaysInAYear[actual_day].second = s.median();
   }
 };
 
 
 
-void ThreadPoolMode(unsigned int num_threads) {
+void ThreadPoolMode(int num_threads) {
   std::cout << "Thread pool mode start:" << std::endl;
   std::cout << "------------------------------------------------------------------------------" << std::endl;
   time_thread_pool = timer.nsecsElapsed(); ///< We run the chronometer
 
   /// if num_threads is greater than the threads available in the system
   /// num_threads will be equal to the value of the free threads in the system
-  if (num_threads > unsigned(QThread::idealThreadCount())) num_threads = QThread::idealThreadCount();
+  // if (num_threads > unsigned(QThread::idealThreadCount())) num_threads = QThread::idealThreadCount(); ///< Uncomment to better performance
+  if (num_threads < 1) num_threads = 1;
 
   QThreadPool thread_pool;
   thread_pool.setMaxThreadCount(num_threads);
 
-  for(int i{0}; i < 365; ++i) {
+  for(int i{0}; i < 365; ++i) { ///< We add a task to QThreadPool for each day of the year
     ThreadPoolTask* task = new ThreadPoolTask();
     thread_pool.start(task);
   }
   thread_pool.waitForDone(); ///< Wait for all tasks to finish before exiting
   days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
 
+  ///< We show the data
+  int actual_day{1};
+  for(auto i: MeanAndMedianDaysInAYear) {
+    std::cout << actual_day++ << " of 365 - Average: " << i.first << " - Median: " << i.second << std::endl;
+  }
+
   time_thread_pool = timer.nsecsElapsed() - time_thread_pool; ///< We stop the chronometer
   std::cout << "------------------------------------------------------------------------------" << std::endl;
   std::cout << "Done in Producer and Consumer mode" << std::endl;
-  std::cout << "Number of threads used: " << num_threads << std::endl << std::endl;
+  std::cout << "Number of threads used: " << thread_pool.maxThreadCount() << std::endl << std::endl;
 }
 
 
