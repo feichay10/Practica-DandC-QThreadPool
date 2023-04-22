@@ -70,7 +70,6 @@ void SerialMode(void) {
   std::cout << "Serial mode start:" << std::endl;
   time_serial = timer.nsecsElapsed(); ///< We run the chronometer
   const int kSecondsInADay{24 * 3600};
-
   for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
     d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
     if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
@@ -79,7 +78,6 @@ void SerialMode(void) {
                 << " with median " << s.median() << std::endl;
     }
   }
-
   time_serial = timer.nsecsElapsed() - time_serial;  ///< We stop the chronometer
   std::cout << "------------------------------------------------------------------------------" << std::endl;
   std::cout << "Done in serial mode" << std::endl << std::endl;
@@ -87,7 +85,11 @@ void SerialMode(void) {
 
 
 
-void ThreadPoolMode(void) {
+
+
+
+
+void ThreadPoolMode(const unsigned int num_threads) {
   std::cout << "Thread pool mode start:" << std::endl;
   time_thread_pool = timer.nsecsElapsed(); ///< We run the chronometer
 
@@ -101,7 +103,12 @@ void ThreadPoolMode(void) {
 
 
 
-void DivideAndConquerorMode(void) {
+
+
+
+
+
+void DivideAndConquerorMode(const unsigned int num_sub_divisions) {
   std::cout << "Divide and conqueror mode start:" << std::endl;
   time_divide_and_conqueror = timer.nsecsElapsed(); ///< We run the chronometer
 
@@ -112,6 +119,11 @@ void DivideAndConquerorMode(void) {
   std::cout << "------------------------------------------------------------------------------" << std::endl;
   std::cout << "Done in Producer and Consumer mode" << std::endl << std::endl;
 }
+
+
+
+
+
 
 
 
@@ -127,7 +139,8 @@ int main(int argc, char* argv[]) {
       {"number-of-exec", required_argument, NULL, 'n'}, ///< option 3 -> number of executions / arg (value) / no flag / char 'n' which identifies the option (and is also the equivalent short option for convenience)
       {0, 0, 0, 0} ///< Explicit array termination
     };
-    int number_of_executions = 1, value = 0; ///< Value is for ThreadPool and D&Q versions (thread subdivision and list divisions, respectively)
+    unsigned int number_of_executions{1};
+    unsigned int value{0}; ///< Value is for ThreadPool and D&Q versions (thread subdivision and list divisions, respectively)
     char selected_mode = ' ';
 
     while (true) { ///< if there were arguments after the options, they would need to be processed from optind which indicates index of next element in argv[]
@@ -166,13 +179,13 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < number_of_executions; ++i) {
       switch (selected_mode) {
         case 'p':
-          ThreadPoolMode();
+          ThreadPoolMode(value);
           acc_num_measurements[1].first += double(time_thread_pool) / 1000000000; ///< We get the all measurements in a variable in seconds
           ++acc_num_measurements[1].second; ///< We store the times to this mode has been used
           break;
 
         case 'd':
-          DivideAndConquerorMode();  ///< We execute the selected mode going to the concret function
+          DivideAndConquerorMode(value);  ///< We execute the selected mode going to the concret function
           acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000; ///< We get the all measurements in a variable in seconds
           ++acc_num_measurements[2].second; ///< We store the times to this mode has been used
           break;
