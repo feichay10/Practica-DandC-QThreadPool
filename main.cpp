@@ -13,16 +13,13 @@ const char* PROG_NAME = "DC_THREADPOOL";
 const char* MANUAL_PATH = "manual.hlp";
 
 void ShowHelp() {
-  std::ifstream fs_in (MANUAL_PATH, std::ios_base::in);
-
-  if (fs_in.is_open()) {
-    std::string current_line;
-
-    while (std::getline(fs_in, current_line))
-      std::cout << current_line << std::endl;
-
-  } else
-    std::cerr << "Help file (" << MANUAL_PATH << ") is missing! Program " << PROG_NAME << " is going to be aborted as correct functionality cannot be ensured" << std::endl;
+  std::cout << "This program does calculations of median and average in a set of random temperature measurements.\n";
+  std::cout << "Invoking modes are as follows:\n";
+  std::cout << "  > --help / -h # Shows these instructions\n";
+  std::cout << "  > --pool-of-threads / -p VALUE # Runs program in ThreadPool mode with VALUE indicating number of threads\n";
+  std::cout << "  > --divide-and-conquer / -d VALUE # Runs program in D&C mode with VALUE indicating number of divisions\n";
+  std::cout << "  > --number-of-exec / -n TIMES # Executes the last indicated method (-p/-d) the number of times written\n";
+  std::cout << "Notes: '#' indicates a comment.\n";
 }
 
 class Statistics {
