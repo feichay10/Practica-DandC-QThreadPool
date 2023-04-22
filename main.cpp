@@ -23,7 +23,6 @@ const char* MANUAL_PATH = "manual.hlp";
 const int kSecondsInADay{86400};
 unsigned int total = 60 * 60 * 24 * 365; ///< sec * min * hour * days
 std::atomic<int> days_processed{0}; ///< Used in ThreadPoolMode
-std::mutex mutex_vector_data;
 QVector<std::pair<double, double>> MeanAndMedianDaysInAYear(365);
 
 QElapsedTimer timer; ///< It will be our timer to count the time in each iteration of each method to solve the problem
@@ -88,8 +87,6 @@ void SerialMode(void) {
   std::cout << "Done in serial mode" << std::endl << std::endl;
 }
 
-
-
 class ThreadPoolTask : public QRunnable {
  public:
   void run() override {
@@ -103,8 +100,6 @@ class ThreadPoolTask : public QRunnable {
     MeanAndMedianDaysInAYear[actual_day].second = s.median();
   }
 };
-
-
 
 void ThreadPoolMode(int num_threads) {
   std::cout << "Thread pool mode start:" << std::endl;
@@ -137,9 +132,6 @@ void ThreadPoolMode(int num_threads) {
   std::cout << "Done in Producer and Consumer mode" << std::endl;
   std::cout << "Number of threads used: " << thread_pool.maxThreadCount() << std::endl << std::endl;
 }
-
-
-
 
 
 
