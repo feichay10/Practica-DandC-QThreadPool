@@ -138,12 +138,12 @@ void ThreadPoolMode(int num_threads) {
 void Procedure(unsigned begin, unsigned end) {
     QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
     for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
-      d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
-      if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
-        Statistics s(d);
-        std::cout << i << " of " << total << " " << "average temperature " << s.getMean()
-                  << " with median " << s.median() << std::endl;
-      }
+        d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
+        if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
+            Statistics s(d);
+            std::cout << i << " of " << total << " " << "average temperature " << s.getMean()
+                        << " with median " << s.median() << std::endl;
+        }
     }
 }
 
@@ -157,7 +157,7 @@ void DivideAndConquerorMode(unsigned begin, unsigned end, unsigned depth = 0) {
                 std::thread t2(DivideAndConquerorMode, pivot, end, depth - 1);
                 t1.join();
                 t2.join();
-            } else {  ///< Else we create a thread
+            } else {  ///< Else we create one thread
                 std::thread t1(Procedure, begin, end);
                 t1.join();
             }
@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
         ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
         std::cout << "------------------------------------------------------------------------------" << std::endl;
         std::cout << "Done in Producer and Consumer mode" << std::endl;
-        std::cout << "Number of threads used: " << std::endl << std::endl;
+        std::cout << "Number of threads used: " << std::endl;
       } else {
         ThreadPoolMode(value);
         // DivideAndConquerorMode(value);
@@ -233,24 +233,23 @@ int main(int argc, char* argv[]) {
         ++acc_num_measurements[0].second;  ///< We store the times to this mode has been used
       }
     }
+    /// We show the relevant data of serial mode
+    std::cout << "Last Time Serial: " << (double(time_serial) / 1000000000) << " seconds - Average: "
+              << ((acc_num_measurements[0].second != 0) ? acc_num_measurements[0].first / acc_num_measurements[0].second : 0.0)
+              << ", Times Executed: " << acc_num_measurements[0].second << std::endl;
+    /// We show the relevant data of thread pool mode
+    std::cout << "Last Time T.Pool: " << (double(time_thread_pool) / 1000000000) << " seconds - Average: "
+              << ((acc_num_measurements[1].second != 0) ? acc_num_measurements[1].first / acc_num_measurements[1].second : 0.0)
+              << ", Times Executed: " << acc_num_measurements[1].second  << std::endl;
+    /// We show the relevant data of divde and conqueror mode
+    std::cout << "Last Time D&C:    " << (double(time_divide_and_conqueror) / 1000000000) << " seconds - Average: "
+              << ((acc_num_measurements[2].second != 0) ? acc_num_measurements[2].first / acc_num_measurements[2].second : 0.0)
+              << ", Times Executed: " << acc_num_measurements[2].second  << std::endl << std::endl;
 
   } catch (std::exception& error) {
     std::cerr << PROG_NAME << " > EXCEPTION > " << error.what() << std::endl;
     return INVALID_ARG;
   }
-
-  /// We show the relevant data of serial mode
-  std::cout << "Last Time Serial: " << (double(time_serial) / 1000000000) << " seconds - Average: "
-            << ((acc_num_measurements[0].second != 0) ? acc_num_measurements[0].first / acc_num_measurements[0].second : 0.0)
-            << ", Times Executed: " << acc_num_measurements[0].second << std::endl;
-  /// We show the relevant data of thread pool mode
-  std::cout << "Last Time T.Pool: " << (double(time_thread_pool) / 1000000000) << " seconds - Average: "
-            << ((acc_num_measurements[1].second != 0) ? acc_num_measurements[1].first / acc_num_measurements[1].second : 0.0)
-            << ", Times Executed: " << acc_num_measurements[1].second  << std::endl;
-  /// We show the relevant data of divde and conqueror mode
-  std::cout << "Last Time D&C:    " << (double(time_divide_and_conqueror) / 1000000000) << " seconds - Average: "
-            << ((acc_num_measurements[2].second != 0) ? acc_num_measurements[2].first / acc_num_measurements[2].second : 0.0)
-            << ", Times Executed: " << acc_num_measurements[2].second  << std::endl << std::endl;
 
   return 0;
 }
