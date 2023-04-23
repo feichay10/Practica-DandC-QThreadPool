@@ -24,6 +24,8 @@ const int kSecondsInADay{86400};
 unsigned int total = 60 * 60 * 24 * 365; ///< sec * min * hour * days
 std::atomic<int> days_processed{0}; ///< Used in ThreadPoolMode
 QVector<std::pair<double, double>> MeanAndMedianDaysInAYear(365);
+const unsigned totalBufferSize = 60 * 60 * 24 * 30;
+QVector<float> Buffer;
 
 QElapsedTimer timer; ///< It will be our timer to count the time in each iteration of each method to solve the problem
 qint64 time_serial = Q_INT64_C(0); ///< We set to zero
@@ -133,33 +135,40 @@ void ThreadPoolMode(int num_threads) {
   std::cout << "Number of threads used: " << thread_pool.maxThreadCount() << std::endl << std::endl;
 }
 
-
-
-
-
-void DivideAndConquerorMode(const unsigned int num_sub_divisions) {
-  std::cout << "Divide and conqueror mode start:" << std::endl;
-  std::cout << "------------------------------------------------------------------------------" << std::endl;
-  time_divide_and_conqueror = timer.nsecsElapsed(); ///< We run the chronometer
-
-
-
-  // days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
-  time_divide_and_conqueror = timer.nsecsElapsed() - time_divide_and_conqueror; ///< We stop the chronometer
-  std::cout << "------------------------------------------------------------------------------" << std::endl;
-  std::cout << "Done in Producer and Consumer mode" << std::endl;
-  std::cout << "Number of threads used: " << std::endl << std::endl;
+void Procedure(unsigned begin, unsigned end) {
+    QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
+    for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
+      d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
+      if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
+        Statistics s(d);
+        std::cout << i << " of " << total << " " << "average temperature " << s.getMean()
+                  << " with median " << s.median() << std::endl;
+      }
+    }
 }
 
-
-
-
-
-
-
+void DivideAndConquerorMode(unsigned begin, unsigned end, unsigned depth = 0) {
+    time_divide_and_conqueror = timer.nsecsElapsed(); ///< We run the chronometer
+    if ((end - begin > kSecondsInADay)) {
+        const unsigned pivot = ((begin + end) / 2) % kSecondsInADay != 0 ? ((begin + end) / 2) + (kSecondsInADay / 2) : (begin + end) / 2;
+        if (pivot < total - kSecondsInADay) {
+            if (depth > 0) {  ///< If we have not reached the maximum depth, we create two threads
+                std::thread t1(DivideAndConquerorMode, begin, pivot, depth - 1);
+                std::thread t2(DivideAndConquerorMode, pivot, end, depth - 1);
+                t1.join();
+                t2.join();
+            } else {  ///< Else we create a thread
+                std::thread t1(Procedure, begin, end);
+                t1.join();
+            }
+        }
+    }
+    time_divide_and_conqueror = timer.nsecsElapsed() - time_divide_and_conqueror; ///< We stop the chronometer
+}
 
 int main(int argc, char* argv[]) {
   QCoreApplication a(argc, argv);
+  Buffer.resize(total);
 
   try {
     ///Process command line parameters -> help
@@ -180,55 +189,49 @@ int main(int argc, char* argv[]) {
 
       if (opt_identifier == -1) break; ///< No more options of either size
 
-      switch (opt_identifier) {
-        case 'h':
-          ShowHelp();
-          return HELP_ASKED;
-
-        case 'p': ///< ThreadPool
-          selected_mode = 'p';
-          value = std::stoi(optarg);
-          break;
-
-        case 'd': ///< Divide & Conquer
-          selected_mode = 'd';
-          value = std::stoi(optarg);
-          break;
-
-        case 'n': ///< Several executions
-          number_of_executions = std::stoi(optarg);
-          break;
-
-        default:
-          std::cerr << "Unrecognized command-line parameter..." << std::endl;
-          return INVALID_INVOCATION; ///getoptlong already shows an error
+      if (opt_identifier == 'h') {
+        ShowHelp();
+        return HELP_ASKED;
+      } else if (opt_identifier == 'p') {
+        selected_mode = 'p';
+        value = std::stoi(optarg);
+      } else if (opt_identifier == 'd') {
+        selected_mode = 'd';
+        value = std::stoi(optarg);
+      } else if (opt_identifier == 'n') {
+        number_of_executions = std::stoi(optarg);
+      } else {
+        std::cerr << "Unrecognized command-line parameter..." << std::endl;
+        return INVALID_INVOCATION; ///getoptlong already shows an error
       }
     }
 
-    if (number_of_executions < 1 || value < 0) return INVALID_INVOCATION;
+    if (number_of_executions < 1 || value < 0) {
+      return INVALID_INVOCATION;
+    }
 
     for (int i = 0; i < number_of_executions; ++i) {
-      switch (selected_mode) {
-        case 'p':
-          ThreadPoolMode(value);
-          acc_num_measurements[1].first += double(time_thread_pool) / 1000000000; ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[1].second; ///< We store the times to this mode has been used
-          break;
-
-        case 'd':
-          DivideAndConquerorMode(value);  ///< We execute the selected mode going to the concret function
-          acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000; ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[2].second; ///< We store the times to this mode has been used
-          break;
-
-        default:
-          ThreadPoolMode(value);
-          //DivideAndConquerorMode(value);
-          //SerialMode(); ///< We execute the selected mode going to the concret function
-          acc_num_measurements[0].first += double(time_serial) / 1000000000; ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[0].second; ///< We store the times to this mode has been used
-          break;
-      };
+      if (selected_mode == 'p') {
+        ThreadPoolMode(value);
+        acc_num_measurements[1].first += double(time_thread_pool) / 1000000000;  ///< We get the all measurements in a variable in seconds
+        ++acc_num_measurements[1].second;  ///< We store the times to this mode has been used
+      } else if (selected_mode == 'd') {
+        std::cout << "Divide and conqueror mode start:" << std::endl;
+        std::cout << "------------------------------------------------------------------------------" << std::endl;
+        std::thread t1(DivideAndConquerorMode, 0, total, value);
+        t1.join();  ///< We execute the selected mode going to the concret function
+        acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000;  ///< We get the all measurements in a variable in seconds
+        ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
+        std::cout << "------------------------------------------------------------------------------" << std::endl;
+        std::cout << "Done in Producer and Consumer mode" << std::endl;
+        std::cout << "Number of threads used: " << std::endl << std::endl;
+      } else {
+        ThreadPoolMode(value);
+        // DivideAndConquerorMode(value);
+        //  SerialMode();
+        acc_num_measurements[0].first += double(time_serial) / 1000000000;  ///< We get the all measurements in a variable in seconds
+        ++acc_num_measurements[0].second;  ///< We store the times to this mode has been used
+      }
     }
 
   } catch (std::exception& error) {
