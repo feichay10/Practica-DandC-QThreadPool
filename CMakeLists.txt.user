@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 9.0.2, 2023-04-23T16:40:27. -->
+<!-- Written by QtCreator 9.0.2, 2023-04-23T20:31:40. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -381,7 +381,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">temperature</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">CMakeProjectManager.CMakeRunConfiguration.temperature</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">temperature</value>
-    <value type="QString" key="RunConfiguration.Arguments">-d 0</value>
+    <value type="QString" key="RunConfiguration.Arguments">-p 7</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>

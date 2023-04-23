@@ -189,21 +189,25 @@ int main(int argc, char* argv[]) {
 
       if (opt_identifier == -1) break; ///< No more options of either size
 
-      if (opt_identifier == 'h') {
-        ShowHelp();
-        return HELP_ASKED;
-      } else if (opt_identifier == 'p') {
-        selected_mode = 'p';
-        value = std::stoi(optarg);
-      } else if (opt_identifier == 'd') {
-        selected_mode = 'd';
-        value = std::stoi(optarg);
-      } else if (opt_identifier == 'n') {
-        number_of_executions = std::stoi(optarg);
-      } else {
-        std::cerr << "Unrecognized command-line parameter..." << std::endl;
-        return INVALID_INVOCATION; ///getoptlong already shows an error
-      }
+      switch (opt_identifier) {
+            case 'h':
+               ShowHelp();
+               return HELP_ASKED;
+            case 'p': ///< ThreadPool
+                selected_mode = 'p';
+                value = std::stoi(optarg);
+                break;
+            case 'd': ///< Divide & Conquer
+                selected_mode = 'd';
+                value = std::stoi(optarg);
+                break;
+            case 'n': ///< Several executions
+                number_of_executions = std::stoi(optarg);
+                break;
+            default:
+                std::cerr << "Unrecognized command-line parameter..." << std::endl;
+                return INVALID_INVOCATION; ///getoptlong already shows an error
+        }
     }
 
     if (number_of_executions < 1 || value < 0) {
@@ -211,27 +215,31 @@ int main(int argc, char* argv[]) {
     }
 
     for (int i = 0; i < number_of_executions; ++i) {
-      if (selected_mode == 'p') {
-        ThreadPoolMode(value);
-        acc_num_measurements[1].first += double(time_thread_pool) / 1000000000;  ///< We get the all measurements in a variable in seconds
-        ++acc_num_measurements[1].second;  ///< We store the times to this mode has been used
-      } else if (selected_mode == 'd') {
-        std::cout << "Divide and conqueror mode start:" << std::endl;
-        std::cout << "------------------------------------------------------------------------------" << std::endl;
-        std::thread t1(DivideAndConquerorMode, 0, total, value);
-        t1.join();  ///< We execute the selected mode going to the concret function
-        acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000;  ///< We get the all measurements in a variable in seconds
-        ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
-        std::cout << "------------------------------------------------------------------------------" << std::endl;
-        std::cout << "Done in Producer and Consumer mode" << std::endl;
-        std::cout << "Number of threads used: " << std::endl;
-      } else {
-        ThreadPoolMode(value);
-        // DivideAndConquerorMode(value);
-        //  SerialMode();
-        acc_num_measurements[0].first += double(time_serial) / 1000000000;  ///< We get the all measurements in a variable in seconds
-        ++acc_num_measurements[0].second;  ///< We store the times to this mode has been used
-      }
+          switch (selected_mode) {
+            case 'p':
+                ThreadPoolMode(value);
+                acc_num_measurements[1].first += double(time_thread_pool) / 1000000000; ///< We get the all measurements in a variable in seconds
+                ++acc_num_measurements[1].second; ///< We store the times to this mode has been used
+                break;
+            case 'd':
+                { std::cout << "Divide and conqueror mode start:" << std::endl;
+                std::cout << "------------------------------------------------------------------------------" << std::endl;
+                std::thread t1(DivideAndConquerorMode, 0, total, value);
+                t1.join();  ///< We execute the selected mode going to the concret function
+                acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000;  ///< We get the all measurements in a variable in seconds
+                ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
+                std::cout << "------------------------------------------------------------------------------" << std::endl;
+                std::cout << "Done in Producer and Consumer mode" << std::endl;
+                std::cout << "Number of threads used: " << std::endl; }
+                break;
+            default:
+                ThreadPoolMode(value);
+                //DivideAndConquerorMode(value);
+                //SerialMode(); ///< We execute the selected mode going to the concret function
+                acc_num_measurements[0].first += double(time_serial) / 1000000000; ///< We get the all measurements in a variable in seconds
+                ++acc_num_measurements[0].second; ///< We store the times to this mode has been used
+                break;
+        };
     }
     /// We show the relevant data of serial mode
     std::cout << "Last Time Serial: " << (double(time_serial) / 1000000000) << " seconds - Average: "
