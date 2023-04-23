@@ -230,12 +230,10 @@ int main(int argc, char* argv[]) {
                 ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
                 std::cout << "------------------------------------------------------------------------------" << std::endl;
                 std::cout << "Done in Producer and Consumer mode" << std::endl;
-                std::cout << "Number of threads used: " << std::endl; }
-                break;
+                std::cout << "Number of threads used: " << std::endl;
+                break; }
             default:
-                ThreadPoolMode(value);
-                //DivideAndConquerorMode(value);
-                //SerialMode(); ///< We execute the selected mode going to the concret function
+                SerialMode(); ///< We execute the selected mode going to the concret function
                 acc_num_measurements[0].first += double(time_serial) / 1000000000; ///< We get the all measurements in a variable in seconds
                 ++acc_num_measurements[0].second; ///< We store the times to this mode has been used
                 break;
