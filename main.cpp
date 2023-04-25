@@ -29,20 +29,19 @@ const unsigned totalBufferSize = 60 * 60 * 24 * 30;
 QVector<float> Buffer;
 
 QElapsedTimer timer; ///< It will be our timer to count the time in each iteration of each method to solve the problem
-qint64 time_serial = Q_INT64_C(0); ///< We set to zero
-qint64 time_thread_pool = Q_INT64_C(0); ///< We set to zero
-qint64 time_divide_and_conqueror = Q_INT64_C(0); ///< We set to zeros
-std::vector<std::pair<double, int>> acc_num_measurements = {std::pair<double, int>(0.0, 0), std::pair<double, int>(0.0, 0), std::pair<double, int>(0.0, 0)};
+qint64 last_time = Q_INT64_C(0); ///< We set to zero
+qint64 old_measurement = -1;
 
 
 void ShowHelp() {
   std::cout << "This program does calculations of median and average in a set of random temperature measurements." << std::endl;
-  std::cout << "Invoking modes are as follows:" << std::endl;
+  std::cout << "Invoking modes are as follows (in any order):" << std::endl;
   std::cout << "  > --help / -h # Shows these instructions" << std::endl;
   std::cout << "  > --pool-of-threads / -p VALUE # Runs program in ThreadPool mode with VALUE indicating number of threads" << std::endl;
   std::cout << "  > --divide-and-conquer / -d VALUE # Runs program in D&C mode with VALUE indicating number of divisions" << std::endl;
   std::cout << "  > --number-of-exec / -n TIMES # Executes the last indicated method (-p/-d) the number of times written" << std::endl;
-  std::cout << "Notes: '#' indicates a comment.";
+  std::cout << "  > --real-time-priority / -r # Gives maximum priority to process. Beware of executing this mode" << std::endl;
+  std::cout << "Notes: '#' indicates a comment. Using -p and -d together is allowed; last one will be considered" << std::endl;
 }
 
 /// This class allows us to save in a single vector, all the temperature measurements in each second of a processor and apply statistical calculations to those measurements.
@@ -79,7 +78,7 @@ class Statistics {
 void SerialMode(void) {
   std::cout << "Serial mode start:" << std::endl;
   std::cout << "------------------------------------------------------------------------------" << std::endl;
-  time_serial = timer.nsecsElapsed(); ///< We run the chronometer
+  last_time = timer.nsecsElapsed(); ///< We run the chronometer
   QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
 
   for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
@@ -97,7 +96,7 @@ void SerialMode(void) {
     }
   }
 
-  time_serial = timer.nsecsElapsed() - time_serial;  ///< We stop the chronometer
+  last_time = timer.nsecsElapsed() - last_time;  ///< We stop the chronometer
   std::cout << "------------------------------------------------------------------------------" << std::endl;
   std::cout << "Done in serial mode" << std::endl << std::endl;
 }
@@ -121,7 +120,7 @@ class ThreadPoolTask : public QRunnable {
 void ThreadPoolMode(int num_threads) {
   std::cout << "Thread pool mode start:" << std::endl;
   std::cout << "------------------------------------------------------------------------------" << std::endl;
-  time_thread_pool = timer.nsecsElapsed(); ///< We run the chronometer
+  last_time = timer.nsecsElapsed(); ///< We run the chronometer
 
   /// if num_threads is greater than the threads available in the system
   /// num_threads will be equal to the value of the free threads in the system
@@ -139,7 +138,7 @@ void ThreadPoolMode(int num_threads) {
   thread_pool.waitForDone(); ///< Wait for all tasks to finish before exiting
   days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
   ///< We show the data
-  time_thread_pool = timer.nsecsElapsed() - time_thread_pool; ///< We stop the chronometer
+  last_time = timer.nsecsElapsed() - last_time; ///< We stop the chronometer
   int actual_day{1};
 
   if (show_data) {
@@ -163,15 +162,14 @@ void Procedure(unsigned begin, unsigned end) {
       auto median = s.median();
       auto mean = s.getMean();
 
-      //if (show_data) {
+      if (show_data)
         std::cout << i << " of " << total << " " << "average temperature " << mean << " with median " << median << std::endl;
-      //}
     }
   }
 }
 
 void DivideAndConquerorMode(unsigned begin, unsigned end, unsigned depth = 0) {
-  time_divide_and_conqueror = timer.nsecsElapsed(); ///< We run the chronometer
+  last_time = timer.nsecsElapsed(); ///< We run the chronometer
 
   if ((end - begin > kSecondsInADay)) {
     const unsigned pivot = ((begin + end) / 2) % kSecondsInADay != 0 ? ((begin + end) / 2) + (kSecondsInADay / 2) : (begin + end) / 2;
@@ -190,7 +188,7 @@ void DivideAndConquerorMode(unsigned begin, unsigned end, unsigned depth = 0) {
     }
   }
 
-  time_divide_and_conqueror = timer.nsecsElapsed() - time_divide_and_conqueror; ///< We stop the chronometer
+  last_time = timer.nsecsElapsed() - last_time; ///< We stop the chronometer
 }
 
 int main(int argc, char* argv[]) {
@@ -251,45 +249,43 @@ int main(int argc, char* argv[]) {
 
     for (int i = 0; i < number_of_executions; ++i) {
       switch (selected_mode) {
-        case 'p':
+        case 'p': {
           ThreadPoolMode(value);
-          acc_num_measurements[1].first += double(time_thread_pool) / 1000000000; ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[1].second; ///< We store the times to this mode has been used
+
+          if (last_time < old_measurement || old_measurement == -1) old_measurement = last_time;
+
           break;
+        }
 
         case 'd': {
           std::cout << "Divide and conqueror mode start:" << std::endl;
           std::cout << "------------------------------------------------------------------------------" << std::endl;
           std::thread t1(DivideAndConquerorMode, 0, total, value);
           t1.join();  ///< We execute the selected mode going to the concret function
-          acc_num_measurements[2].first += double(time_divide_and_conqueror) / 1000000000;  ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[2].second;  ///< We store the times to this mode has been used
+
+          if (last_time < old_measurement || old_measurement == -1) old_measurement = last_time;
+
           std::cout << "------------------------------------------------------------------------------" << std::endl;
           std::cout << "Done in Producer and Consumer mode" << std::endl;
           std::cout << "Number of threads used: " << std::endl;
           break;
         }
 
-        default:
+        default: {
           SerialMode(); ///< We execute the selected mode going to the concret function
-          acc_num_measurements[0].first += double(time_serial) / 1000000000; ///< We get the all measurements in a variable in seconds
-          ++acc_num_measurements[0].second; ///< We store the times to this mode has been used
+
+          if (last_time < old_measurement || old_measurement == -1) old_measurement = last_time;
+
           break;
+        }
       };
     }
 
-    /// We show the relevant data of serial mode
-    std::cout << "Last Time Serial: " << (double(time_serial) / 1000000000) << " seconds - Average: "
-              << ((acc_num_measurements[0].second != 0) ? acc_num_measurements[0].first / acc_num_measurements[0].second : 0.0)
-              << ", Times Executed: " << acc_num_measurements[0].second << std::endl;
-    /// We show the relevant data of thread pool mode
-    std::cout << "Last Time T.Pool: " << (double(time_thread_pool) / 1000000000) << " seconds - Average: "
-              << ((acc_num_measurements[1].second != 0) ? acc_num_measurements[1].first / acc_num_measurements[1].second : 0.0)
-              << ", Times Executed: " << acc_num_measurements[1].second  << std::endl;
-    /// We show the relevant data of divde and conqueror mode
-    std::cout << "Last Time D&C:    " << (double(time_divide_and_conqueror) / 1000000000) << " seconds - Average: "
-              << ((acc_num_measurements[2].second != 0) ? acc_num_measurements[2].first / acc_num_measurements[2].second : 0.0)
-              << ", Times Executed: " << acc_num_measurements[2].second  << std::endl << std::endl;
+    /// Show best and last time for the chosen execution mode
+    std::cout << "Last " << ((selected_mode == 'p') ? "ThreadPool" : ((selected_mode == 'd') ? "D&C" : "Serial")) << " time: "
+              << (double)(last_time) / 1000000000 << " seconds - Minimum: "
+              << (double)(old_measurement) / 1000000000
+              << ", Times Executed: " << number_of_executions << std::endl;
 
   } catch (std::exception& error) {
     std::cerr << PROG_NAME << " > EXCEPTION > " << error.what() << std::endl;
