@@ -155,7 +155,7 @@ void ThreadPoolMode(int num_threads) {
 void Procedure(unsigned begin, unsigned end) {
   QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
 
-  for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
+  for(unsigned int i{begin}; i <= end; ++i) { ///< We go through all the seconds that a year has
     d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
 
     if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
@@ -163,10 +163,9 @@ void Procedure(unsigned begin, unsigned end) {
       auto median = s.median();
       auto mean = s.getMean();
 
-      if (show_data) {
-        std::cout << i << " of " << total << " " << "average temperature " << mean
-                  << " with median " << median << std::endl;
-      }
+      //if (show_data) {
+        std::cout << i << " of " << total << " " << "average temperature " << mean << " with median " << median << std::endl;
+      //}
     }
   }
 }
