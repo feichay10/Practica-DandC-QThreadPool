@@ -43,8 +43,9 @@ void ShowHelp() {
   std::cout << "  > --pool-of-threads / -p VALUE # Runs program in ThreadPool mode with VALUE indicating number of threads" << std::endl;
   std::cout << "  > --divide-and-conquer / -d VALUE # Runs program in D&C mode with VALUE indicating number of divisions" << std::endl;
   std::cout << "  > --number-of-exec / -n TIMES # Executes the last indicated method (-p/-d) the number of times written" << std::endl;
-  std::cout << "  > --real-time-priority / -r # Gives maximum priority to process. Beware of executing this mode" << std::endl;
+  std::cout << "  > --real-time-priority / -r PRIORITY # Gives real-time priority based on range 1-99 (the greater the value, the better)" << std::endl;
   std::cout << "Notes: '#' indicates a comment. Using -p and -d together is allowed; last one will be considered" << std::endl;
+  std::cout << "Real-time priority is determined as -1 - value, so if 99 is entered maximum priority -100 is given " << std::endl;
 }
 
 /// This class allows us to save in a single vector, all the temperature measurements in each second of a processor and apply statistical calculations to those measurements.
@@ -223,7 +224,7 @@ int main(int argc, char* argv[]) {
 
   try {
     Buffer.resize(total);
-    struct sched_param param {
+    struct sched_param param { ///Contains priority from 1-99 for real-time measurements
       99
     };
     ///Process command line parameters -> help
@@ -232,8 +233,8 @@ int main(int argc, char* argv[]) {
       {"pool-of-threads", required_argument, NULL, 'p'}, ///< option 1 -> ThreadPool / arg (value) / no flag / char 'p' which identifies the option (and is also the equivalent short option for convenience)
       {"divide-and-conquer", required_argument, NULL, 'd'}, ///< option 2 -> D&C / arg (value) / no flag / char 'd' which identifies the option (and is also the equivalent short option for convenience)
       {"number-of-exec", required_argument, NULL, 'n'}, ///< option 3 -> number of executions / arg (num_exec) / no flag / char 'n' which identifies the option (and is also the equivalent short option for convenience)
-      {"show-data", no_argument, NULL, 's'}, ///< option 4 -> number of executions / no arg / no flag / char 's' which identifies the option (and is also the equivalent short option for convenience)
-      {"real-time-priority", no_argument, NULL, 'r'}, ///< option 3 -> number of executions / no arg / no flag / char 'r' which identifies the option (and is also the equivalent short option for convenience)
+      {"show-data", no_argument, NULL, 's'}, ///< option 4 -> show temperature data / no arg / no flag / char 's' which identifies the option (and is also the equivalent short option for convenience)
+      {"real-time-priority", required_argument, NULL, 'r'}, ///< option 5 -> real time / arg(priority 1-99) / no flag / char 'r' which identifies the option (and is also the equivalent short option for convenience)
       {0, 0, 0, 0} ///< Explicit array termination
     };
     unsigned int number_of_executions{1};
@@ -242,7 +243,7 @@ int main(int argc, char* argv[]) {
 
     while (true) { ///< if there were arguments after the options, they would need to be processed from optind which indicates index of next element in argv[]
       int option_index = 0;
-      char opt_identifier = getopt_long(argc, argv, "hp:d:n:sr", long_options, &option_index); ///< after an option means required argument
+      char opt_identifier = getopt_long(argc, argv, "hp:d:n:sr:", long_options, &option_index); ///< after an option means required argument
 
       if (opt_identifier == -1) break; ///< No more options of either size
 
@@ -270,17 +271,22 @@ int main(int argc, char* argv[]) {
           break;
 
         case 'r': { ///< Set REAL-TIME-PRIORITY if possible
-          std::cout << sched_get_priority_min(SCHED_RR) << ' ' << sched_get_priority_max(SCHED_RR) << std::endl;
-          pid_t pid = getpid();
-          sched_setscheduler(pid, SCHED_RR, &param);
-          errno = 0;
-          int result = nice(-20) ;
+          int rt_priority = std::stoi(optarg);
 
-          if (result == -1 && (errno == ENOSYS || errno == EPERM)) {
-            std::cerr << "Insufficient permission to get real-time priority status" << std::endl;
+          ///We could use either SCHED_FIFO or SCHED_RR (Round Robin) as exclusive modes for real-time
+          if (rt_priority >= sched_get_priority_min(SCHED_RR) && rt_priority <= sched_get_priority_max(SCHED_RR)) {
+            param.sched_priority = rt_priority; ///1-99 value that will be substracted from -1 to get [-1,100] priority]
+            pid_t pid = getpid();
+
+            if (sched_setscheduler(pid, SCHED_RR, &param) != 0) {
+              std::cerr << "Could not set RT priority. Check permissions" << std::endl;
+              return INVALID_INVOCATION;
+            }
+
+          } else {
+            std::cerr << "RT priority needs to be in range: " << sched_get_priority_min(SCHED_RR) << ' ' << sched_get_priority_max(SCHED_RR) << std::endl;
             return INVALID_INVOCATION;
-
-          } else std::cout << "Real-time priority set correctly" << std::endl;
+          }
 
           break;
         }
