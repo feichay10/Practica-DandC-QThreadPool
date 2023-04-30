@@ -10,6 +10,7 @@
 #include <QElapsedTimer>
 #include <atomic>
 #include <mutex>
+#include <unistd.h>
 
 // https://stackoverflow.com/questions/7988486/how-do-you-calculate-the-variance-median-and-standard-deviation-in-c-or-java/7988556#7988556
 
@@ -78,11 +79,13 @@ class Statistics {
 /// this functions allows us to compare the performance against using threads in the other two methods
 void SerialMode(void) {
   std::cout << "Serial mode start => Actual iteration: " << ++actual_time_executed << std::endl;
+
   if (show_data) std::cout << "------------------------------------------------------------------------------" << std::endl;
+
   last_time = timer.nsecsElapsed(); ///< We run the chronometer
   QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
-
   int actual_day{0};
+
   for(unsigned int i{0}; i <= total; ++i) { ///< We go through all the seconds that a year has
     d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
 
@@ -91,18 +94,17 @@ void SerialMode(void) {
       double mean{s.getMean()};
       double median{s.median()};
 
-      if (show_data) {
+      if (show_data)
         std::cout << ++actual_day << " of 365 - Average: " << mean << " - Median: " << median << std::endl;
-      }
     }
   }
 
   last_time = timer.nsecsElapsed() - last_time;  ///< We stop the chronometer
+
   if (show_data) {
     std::cout << "------------------------------------------------------------------------------" << std::endl;
     std::cout << "Done in serial mode - Time of this iteration: " << ((double)(last_time) / 1000000000) << " seconds" << std::endl << std::endl;
   }
-
 }
 
 class ThreadPoolTask : public QRunnable {
@@ -125,38 +127,44 @@ void ThreadPoolMode(int num_threads) {
   /// if num_threads is greater than the threads available in the system
   /// num_threads will be equal to the value of the free threads in the system
   // if (num_threads > unsigned(QThread::idealThreadCount())) num_threads = QThread::idealThreadCount(); ///< Uncomment to better performance
-
   if (num_threads < 1) num_threads = 1;
 
   QThreadPool thread_pool;
   thread_pool.setMaxThreadCount(num_threads);
-
   std::cout << "Thread pool mode start => Threads: " << thread_pool.maxThreadCount() << " - Actual iteration: " << ++actual_time_executed << std::endl;
-
   last_time = timer.nsecsElapsed(); ///< We run the chronometer
+
   for(int i{0}; i < 365; ++i) { ///< We add a task to QThreadPool for each day of the year
     ThreadPoolTask* task = new ThreadPoolTask();
     thread_pool.start(task);
   }
+
   thread_pool.waitForDone(); ///< Wait for all tasks to finish before exiting
+
   if (show_data) {
     int actual_day{1};
     std::cout << "------------------------------------------------------------------------------" << std::endl;
+
     for(auto i : MeanAndMedianDaysInAYear)
       std::cout << actual_day++ << " of 365 - Average: " << i.first << " - Median: " << i.second << std::endl;
+
     std::cout << "------------------------------------------------------------------------------" << std::endl;
     last_time = timer.nsecsElapsed() - last_time; ///< We stop the chronometer
     std::cout << "Done in Thread pool mode - Time of this iteration: " << ((double)(last_time) / 1000000000) << " seconds" << std::endl << std::endl;
+
   } else {
     last_time = timer.nsecsElapsed() - last_time; ///< We stop the chronometer
   }
+
   days_processed = 0; ///< If we want to use this mood again, we must reset the critical data.
 }
 
 void Procedure(unsigned begin, unsigned end) {
   QVector<float> d(kSecondsInADay); ///< Here we save all the measurements of a single day
+
   for(unsigned int i{begin}; i <= end; ++i) { ///< We go through all the seconds that a year has
     d[i % (kSecondsInADay)] = (random() % 50 + 50); ///< We put a random temperature measurement in the position that corresponds to the vector
+
     if(i % (kSecondsInADay) == 0) { ///< If we fill in all the data for a day, we make the measurements.
       Statistics s(d);
       MeanAndMedianDaysInAYear[(i / kSecondsInADay) - 1].first = s.getMean();
@@ -186,20 +194,25 @@ void DivideAndConquerCreaterThreads(unsigned begin, unsigned end, unsigned depth
 
 void DivideAndConquerMode(int num_recursive_calls) {
   last_time = timer.nsecsElapsed(); ///< We run the chronometer
+
   if (num_recursive_calls <  0) num_recursive_calls = 0;
+
   std::cout << "Divide and conquer mode start => Threads: " << pow(2, num_recursive_calls)
             << " - Actual iteration: " << ++actual_time_executed << std::endl;
-
   std::thread t1(DivideAndConquerCreaterThreads, 1, total, num_recursive_calls);
   t1.join();  ///< We execute the selected mode going to the concret function
+
   if(show_data) {
     int actual_day{1};
     std::cout << "------------------------------------------------------------------------------" << std::endl;
+
     for(auto i : MeanAndMedianDaysInAYear)
       std::cout << actual_day++ << " of 365 - Average: " << i.first << " - Median: " << i.second << std::endl;
+
     std::cout << "------------------------------------------------------------------------------" << std::endl;
     std::cout << "Done in Divide and conquer mode" << std::endl << std::endl;
   }
+
   last_time = timer.nsecsElapsed() - last_time; ///< We stop the chronometer
   days_processed = 0;
 }
@@ -214,8 +227,9 @@ int main(int argc, char* argv[]) {
       {"help", no_argument, NULL, 'h'}, ///< option 0 -> help / no arg / no flag / char 'h' which identifies the option (and is also the equivalent short option for convenience)
       {"pool-of-threads", required_argument, NULL, 'p'}, ///< option 1 -> ThreadPool / arg (value) / no flag / char 'p' which identifies the option (and is also the equivalent short option for convenience)
       {"divide-and-conquer", required_argument, NULL, 'd'}, ///< option 2 -> D&C / arg (value) / no flag / char 'd' which identifies the option (and is also the equivalent short option for convenience)
-      {"number-of-exec", required_argument, NULL, 'n'}, ///< option 3 -> number of executions / arg (value) / no flag / char 'n' which identifies the option (and is also the equivalent short option for convenience)
-      {"show-data", no_argument, NULL, 's'}, ///< option 3 -> number of executions / arg (value) / no flag / char 'n' which identifies the option (and is also the equivalent short option for convenience)
+      {"number-of-exec", required_argument, NULL, 'n'}, ///< option 3 -> number of executions / arg (num_exec) / no flag / char 'n' which identifies the option (and is also the equivalent short option for convenience)
+      {"show-data", no_argument, NULL, 's'}, ///< option 4 -> number of executions / no arg / no flag / char 's' which identifies the option (and is also the equivalent short option for convenience)
+      {"real-time-priority", no_argument, NULL, 'r'}, ///< option 3 -> number of executions / no arg / no flag / char 'r' which identifies the option (and is also the equivalent short option for convenience)
       {0, 0, 0, 0} ///< Explicit array termination
     };
     unsigned int number_of_executions{1};
@@ -251,6 +265,18 @@ int main(int argc, char* argv[]) {
           show_data = true;
           break;
 
+        case 'r': { ///< Set REAL-TIME-PRIORITY if possible
+          errno = 0;
+          int result = nice(20) ;
+
+          if (result == -1 && (errno == ENOSYS || errno == EPERM)) {
+            std::cerr << "Insufficient permission to get real-time priority status" << std::endl;
+            return INVALID_INVOCATION;
+          }
+
+          break;
+        }
+
         default:
           std::cerr << "Unrecognized command-line parameter..." << std::endl;
           return INVALID_INVOCATION; ///getoptlong already shows an error
@@ -277,10 +303,11 @@ int main(int argc, char* argv[]) {
           break;
         }
       };
+
       if (last_time < old_measurement || old_measurement == -1) old_measurement = last_time;
     }
-    actual_time_executed = 0; ///< We reset the variable what tell to us in which iteration we was
 
+    actual_time_executed = 0; ///< We reset the variable what tell to us in which iteration we was
     /// Show best and last time for the chosen execution mode
     std::cout << std::endl << "Last " << ((selected_mode == 'p') ? "Thread Pool" : ((selected_mode == 'd') ? "D&C" : "Serial")) << " time: "
               << (double)(last_time) / 1000000000 << " seconds - Minimum: "
