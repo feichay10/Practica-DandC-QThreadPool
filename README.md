@@ -26,17 +26,17 @@ one are indicated. The results and graphical comparisons may be seen in the Goog
 
 ## Available Commands
 
-  Invoking modes are as follows (in any order):
-    > --help / -h # Shows these instructions
-    > --pool-of-threads / -p VALUE # Runs program in ThreadPool mode with VALUE indicating number of threads
-    > --divide-and-conquer / -d VALUE # Runs program in D&C mode with VALUE indicating number of divisions
-    > --number-of-exec / -n TIMES # Executes the last indicated method (-p/-d) the number of times written
-    > --real-time-priority / -r PRIORITY # Gives real-time priority based on range 1-99 (the greater the value, the better)
-  
-  Notes: 
-     * '#' indicates a comment. 
-     * Using -p and -d together is allowed; last one will be considered
-     * Real-time priority is determined as -1 - value, so priority ends up being [-1,-100]. Check with top command
+-  Invoking modes are as follows (in any order):
+-    > --help / -h # Shows these instructions
+-    > --pool-of-threads / -p VALUE # Runs program in ThreadPool mode with VALUE indicating number of threads
+-    > --divide-and-conquer / -d VALUE # Runs program in D&C mode with VALUE indicating number of divisions
+-    > --number-of-exec / -n TIMES # Executes the last indicated method (-p/-d) the number of times written
+-    > --real-time-priority / -r PRIORITY # Gives real-time priority based on range 1-99 (the greater the value, the better)
+-  
+-  Notes: 
+-     * '#' indicates a comment. 
+-     * Using -p and -d together is allowed; last one will be considered
+-     * Real-time priority is determined as -1 - value, so priority ends up being [-1,-100]. Check with top command
 
 ## Built With
 
