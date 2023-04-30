@@ -7,7 +7,7 @@ D&C_Thread_Pool_Temperature. Output program is called "temperature".
 
 ## Description
 
-This program does calculations of median and average in a set of random temperature measurements in a whole year.
+This program does calculations of median and average in a set of random temperature measurements in a whole year. Two versions with optional real-time priority: ThreadPool and Divide & Conquer.
 
 ## Links
 
