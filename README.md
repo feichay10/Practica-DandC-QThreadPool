@@ -16,13 +16,16 @@ This program does calculations of median and average in a set of random temperat
 
 ## Screenshots
 
-![X](X.png "X")
+![REAL-TIME](real_time.png "real_time")
+![NO-REAL-TIME](no_real_time.png "no_real_time")
 
 ## Process for calculating performance
 
 Program may be initiated with any of the commands below, and as such, a certain mode may be run several times
 with real-time priority activated if required. After the process finishes, the last time value and the best (minimum)
-one are indicated. The results and graphical comparisons may be seen in the Google Drive SpreadSheet above.
+one are indicated. The results and graphical comparisons may be seen in the Google Drive SpreadSheet above. 3 executions
+were done for each mode and its derivations depending on threads, in order to get the best result out of 3 and not
+consume too much time.
 
 ## Available Commands
 
@@ -36,7 +39,8 @@ Invoking modes are as follows (in any order):
 Notes: 
 -    '#' indicates a comment. 
 -    Using -p and -d together is allowed; last one will be considered
--    Real-time priority is determined as -1 - value, so priority ends up being [-1,-100]. Check with top command
+-    Real-time priority is determined as -1 - value, so priority ends up being [-1,-100]
+-    Root privileges required for real-time executions
 
 ## Built With
 
