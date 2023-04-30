@@ -1,6 +1,9 @@
-<h1 align="center"><D&C_Thread_Pool_Temperature></h1>
+<h1 align="center"><project-name></h1>
 
 <p align="center"><project-description</p>
+
+## Title
+D&C_Thread_Pool_Temperature. Output program is called "temperature".
 
 ## Description
 
