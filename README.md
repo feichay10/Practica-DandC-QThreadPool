@@ -40,6 +40,7 @@ Notes:
 -    '#' indicates a comment. 
 -    Using -p and -d together is allowed; last one will be considered
 -    Real-time priority is determined as -1 - value, so priority ends up being [-1,-100]
+-    Standard scheduler is usually quite good, therefore important real-time priority benefits are not usually observed
 -    Root privileges required for real-time executions
 
 ## Built With
