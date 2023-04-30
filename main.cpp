@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
 
     while (true) { ///< if there were arguments after the options, they would need to be processed from optind which indicates index of next element in argv[]
       int option_index = 0;
-      char opt_identifier = getopt_long(argc, argv, "hp:d:n:s", long_options, &option_index); ///< after an option means required argument
+      char opt_identifier = getopt_long(argc, argv, "hp:d:n:sr", long_options, &option_index); ///< after an option means required argument
 
       if (opt_identifier == -1) break; ///< No more options of either size
 
@@ -267,12 +267,13 @@ int main(int argc, char* argv[]) {
 
         case 'r': { ///< Set REAL-TIME-PRIORITY if possible
           errno = 0;
-          int result = nice(20) ;
+          int result = nice(-20) ;
 
           if (result == -1 && (errno == ENOSYS || errno == EPERM)) {
             std::cerr << "Insufficient permission to get real-time priority status" << std::endl;
             return INVALID_INVOCATION;
-          }
+
+          } else std::cout << "Real-time priority set correctly" << std::endl;
 
           break;
         }
