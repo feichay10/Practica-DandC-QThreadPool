@@ -11,6 +11,7 @@
 #include <atomic>
 #include <mutex>
 #include <unistd.h>
+#include <sched.h>
 
 // https://stackoverflow.com/questions/7988486/how-do-you-calculate-the-variance-median-and-standard-deviation-in-c-or-java/7988556#7988556
 
@@ -219,9 +220,12 @@ void DivideAndConquerMode(int num_recursive_calls) {
 
 int main(int argc, char* argv[]) {
   QCoreApplication a(argc, argv);
-  Buffer.resize(total);
 
   try {
+    Buffer.resize(total);
+    struct sched_param param {
+      99
+    };
     ///Process command line parameters -> help
     struct option long_options[] = { ///< argument for an option is stored in optarg (if it was optional_argument, and was not specified, will be a nullptr)
       {"help", no_argument, NULL, 'h'}, ///< option 0 -> help / no arg / no flag / char 'h' which identifies the option (and is also the equivalent short option for convenience)
@@ -266,6 +270,9 @@ int main(int argc, char* argv[]) {
           break;
 
         case 'r': { ///< Set REAL-TIME-PRIORITY if possible
+          std::cout << sched_get_priority_min(SCHED_RR) << ' ' << sched_get_priority_max(SCHED_RR) << std::endl;
+          pid_t pid = getpid();
+          sched_setscheduler(pid, SCHED_RR, &param);
           errno = 0;
           int result = nice(-20) ;
 
